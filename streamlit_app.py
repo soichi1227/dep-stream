@@ -1,11 +1,15 @@
 import streamlit as st
 import requests
 from datetime import datetime, timedelta
+import os
 
-# Flask APIのURL
-FLASK_API_URL = "http://localhost:5000/sales/register_deal"
-# Next.jsのURL（Next.jsがホストされるURLに変更してください）
-NEXTJS_BASE_URL = "http://localhost:3000"
+# 環境に応じたURL設定
+if os.getenv("ENV") == "production":  # Azure環境
+    FLASK_API_URL = "https://tech0-gen-8-step3-app-py-15.azurewebsites.net/sales/register_deal"
+    NEXTJS_BASE_URL = "https://tech0-gen-8-step3-testapp-node2-30.azurewebsites.net"
+else:  # ローカル環境
+    FLASK_API_URL = "http://localhost:5000/sales/register_deal"
+    NEXTJS_BASE_URL = "http://localhost:3000"
 
 # Main layout
 st.markdown(
@@ -69,18 +73,17 @@ with st.form("deal_form"):
                 "duration": duration,
                 "dates": meeting_times
             }
-            response = requests.post(FLASK_API_URL, json=payload)
-
-            if response.status_code == 200:
-                result = response.json()
-                link = result.get("link")  # Flaskから返されるリンクを取得
-                data = result.get("data")
-                print(data)
-                
-                if link:
-                    st.success("商談情報が登録されました！")
-                    st.write(f"生成されたリンク: {link}")  # 単にリンクを表示
+            try:
+                response = requests.post(FLASK_API_URL, json=payload)
+                if response.status_code == 200:
+                    result = response.json()
+                    link = result.get("link")  # Flaskから返されるリンクを取得
+                    if link:
+                        st.success("商談情報が登録されました！")
+                        st.write(f"生成されたリンク: {link}")  # 単にリンクを表示
+                    else:
+                        st.error("Flaskサーバーからのリンクが見つかりませんでした。")
                 else:
-                    st.error("Flaskサーバーからのリンクが見つかりませんでした。")
-            else:
-                st.error(f"エラー: {response.json().get('error', '原因不明のエラーです')}")
+                    st.error(f"エラー: {response.json().get('error', '原因不明のエラーです')}")
+            except requests.exceptions.RequestException as e:
+                st.error(f"リクエストエラー: {e}")
